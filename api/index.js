@@ -30,13 +30,6 @@ async function networkSpeedTestService (req, res) {
   var url={}
   req.url.split("?").length<2?url="":req.url.split("?")[1].split("&").forEach(e=> url[e.split("=")[0]]=e.split("=")[1])
   switch( url["action"] ) {
-    case "upload":
-      res.writeHead(200, {'Content-Type': 'text/html', 'Cache-Control': 'no-cache' })
-      res.end('upload')
-    case "ping":
-      res.writeHead(200, {'Content-Type': 'text/html', 'Cache-Control': 'no-cache' })
-      res.end('ping')
-      break
     case "download":
       if( fileLog) fs.appendFileSync('speedtester.log', `${now()} Request from -> ${getIP(req)}\n`)
       if( !nowHost) log( `${now()} Request from -> ${getIP(req)}` )
@@ -54,11 +47,12 @@ async function networkSpeedTestService (req, res) {
       // let readStream = fs.createReadStream( path.join(__dirname, 'trash.bin') )
       // readStream.on('data', data => res.write(data) )
       // readStream.on( 'end', data => res.end() )
-
       break
+    case "upload":
+    case "ping":
     default:
       res.writeHead(200, {'Content-Type': 'text/html', 'Cache-Control': 'no-cache' })
-      res.end('..')
+      res.end( '..action: '+ url['action'] )
   }
 }
 

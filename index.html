@@ -34,11 +34,12 @@
     #pdAccMB, #pdSpeMB { font-size: 20px }
     #pdUnit,#pdTest  { font-size: 15px }
     #pdSpeed { font-size: 50px; line-height:100% }
-  @media only screen and (orientation: landscape) and (max-height: 500px) {
+  @media only screen and (orientation: landscape) {
     .main { grid-template: 1fr 1fr 1fr 2fr / 1fr 1fr; }
     div[id^="mt_"] { grid-column: 2; margin: auto; width:100% }
     #mt_3 { grid-column:1; grid-row-start: 1; grid-row-end: 5; margin: auto auto auto 1vw; }
     #mt_5 { flex-wrap: wrap; }
+    #mt_5 div { min-width: 20vw; }
   }
   </style>
 </head>
@@ -46,9 +47,9 @@
 <body>
   <div id="map" class="map"></div>
   <div class="code">Designed by: <a href="https://www.linkedin.com/in/guillermolococo">Guillermo Lo Coco</a>
-                <br>Source Code: <a href="https://github.com/glococo/networkspeedtester">Github</a></div>
+                <br>Source Code: <a href="https://github.com/glococo/network-speed-tester">Github</a></div>
   <div class="main">
-    <div id="mt_1">ES8/Node Net Speed Tester</div>
+    <div id="mt_1">Network Speed Tester</div>
     <div id="mt_2"></div>
     <div id="mt_3"><div class="progress-bar" id="progress-bar">
         <canvas id="pBase" height="280px" width="280px"></canvas>
@@ -234,9 +235,9 @@ function openLayerInit() {
 }
 
 function getConnectionType(){
+  let connType
   let connection  = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  connType        = connection.type || connection.effectiveType
-
+  if( connection ) connType  = connection.type || connection.effectiveType
   $('mt_2').innerHTML=`Your IP: ${clientIP}`
   if ( connType ) $('mt_2').innerHTML=`Connected through ${connType} - IP: ${clientIP}`
 }

@@ -6,8 +6,9 @@ const compFactor= 1.13  // Compensation for HTTP+TCP+IP+ETH overhead. 925000 is 
                         // You may want to change this if you're going through your local network with a different MTU or if you're going over IPv6
 
 class SpeedTestFramework {
-    pingsAndSeconds = 20
     constructor (sharedMemoryBuffer, url) {
+        this.url = url,
+        this.pingsAndSeconds = 20,
         this.testRun    = new Uint8Array(sharedMemoryBuffer,0,1),   // TestRun [0]Stop [1]Run [2]Finish [3]Cancel   [4]Ping/Jitter [5]Download [6]Upload
         this.pingJitt   = new Uint8Array(sharedMemoryBuffer,1,1),   // Work percentage done of Ping-Jitter
         this.download   = new Uint8Array(sharedMemoryBuffer,2,1),   // Work percentage done of Download
@@ -19,8 +20,7 @@ class SpeedTestFramework {
         this.vDownloadMB= new Float32Array(sharedMemoryBuffer,20,1), // Downloaded MB value (float)
         this.vUpload    = new Float32Array(sharedMemoryBuffer,24,1), // Upload value (float)
         this.vUploadCu  = new Float32Array(sharedMemoryBuffer,28,1), // Upload current value (float)
-        this.vUploadMB  = new Float32Array(sharedMemoryBuffer,32,1), // Uploaded MB value (float)
-        this.url = url
+        this.vUploadMB  = new Float32Array(sharedMemoryBuffer,32,1) // Uploaded MB value (float)
     }
     urlPing     = _=> this.url + '?action=ping&rnd=' + Math.random()
     urlDownload = _=> this.url + '?action=download&rnd=' + Math.random()

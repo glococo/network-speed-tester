@@ -2,6 +2,7 @@
 ![ES8 Network-Speed-Tester](/screenshot.png?raw=true)
 
 Test it -> [https://network-speed-tester.now.sh/](https://network-speed-tester.now.sh/)
+(make sure you don't have any Adblocker running. Remote requests are blocked)
 
 This is a PWA playground for testing browser APIs capabilities.
 Beside the fancy and user friendly look, this app is build with some advanced features
@@ -31,7 +32,7 @@ Some of them, re-enabled it.
 - Desktop: Firefox +57 with "about:config" -> "javascript.options.shared_memory" flag enabled
 
 - Android: Chrome +64 with "chrome://flags" -> "WebAssembly threads support" flag enabled
-- Android: Firefox +57 with "about:config" -> "javascript.options.shared_memory" flag enabled
+- Android: Firefox +57 with "about:config" -> "javascript.options.shared_memory" and "javascript.options.experimental.fields" flag enabled
 - Android: Opera not supported
 - Android: Edge not supported
 

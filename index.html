@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
+  <meta name="theme-color" content="#4285f4">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" sizes="192x192" href="nst_192.png">
+  <title>ES8/NodeJs Network Speed Tester</title>
+  <script src="https://openlayers.org/en/v4.6.5/build/ol.js"></script>
+  <script src="arc.js"></script>
+  <link rel="stylesheet" href="https://openlayers.org/en/v4.6.5/css/ol.css" type="text/css">
+  <style type="text/css">
+    * { padding: 0; margin: 0 }
+    html, body, .main { height: 100%; width: 100%; font-family: Ubuntu, sans-serif; text-align:center; }
+    a { color: #2b2b61 }
+    .map { height:100%; width:100%; opacity:1.0; position: absolute; z-index:1 }
+    .code { position:absolute; bottom:0; left:0; width:auto; font-size:2vmin; border-radius: 0 1vw 0 0; box-shadow: 0 0 8px #000; background-color:#FFF; color:#555; opacity:.7; z-index:3; padding:4px 10px 4px 10px }
+    .main { opacity:.75; position: absolute; z-index:2; background-color:transparent; overflow: hidden; display: grid; border:0; grid-template: 2fr 1fr 11fr 2fr 3fr / 100% }
+    div[id^="mt_"]{ grid-column:1; margin: auto; }
+    input[type=button] { font-size: 2.5vmax; padding: .5vw 6vw; text-align:center; box-shadow: .1vw .1vw .5vw RGBA(5,5,5,.5); border:0; border-radius: .25vw; }
+    #st-start { background: linear-gradient(#73c3f9, #2980b9, #3498db); color: #FFF }
+    #st-start:hover { background-color: #08f; color: #fff; border-color: #08f }
+    #st-stop { background: linear-gradient(#ff6767, #bd0b0b, #c72e2e); color: #FFF; display:none}
+    #st-stop:hover  { background-color: #C23; color: #FFF; border-color: #C23 }
+    #mt_1 { font-size: 8vmin; color:#FFF; text-shadow:1px 1px 4px #000 }
+    #mt_2 { font-size: 4vmin; color:#444; text-shadow:0px 0px 4px #FFF }
+    #mt_5 { display:inline-flex; flex-wrap: nowrap; width: 100%;}
+    #mt_5 div { opacity:0;border-radius:1vw; color:#FFF; padding: .3vw 1vw .3vw 1vw; margin: .3vw auto; font-size: 2vmax; background:linear-gradient(#3cc8f9, #3f7f96); text-shadow:0 0 3px #666; box-shadow:0 0 4px #333 }
+    .st-sec { width:40px }
+    .progress-bar { display: inline-block; position: relative; width:280px;height:280px; margin:0; padding:0; opacity: 0; transition: opacity 1s ease-in-out}
+    .progress-bar canvas { position: absolute; left:0}
+    .progress-data{ position:relative; top: 80px; text-align: center; color: #48718c}
+    #pdAccMB, #pdSpeMB { font-size: 20px }
+    #pdUnit,#pdTest  { font-size: 15px }
+    #pdSpeed { font-size: 50px; line-height:100% }
+  @media only screen and (orientation: landscape) and (max-height: 500px) {
+    .main { grid-template: 1fr 1fr 1fr 2fr / 1fr 1fr; }
+    div[id^="mt_"] { grid-column: 2; margin: auto; width:100% }
+    #mt_3 { grid-column:1; grid-row-start: 1; grid-row-end: 5; margin: auto auto auto 1vw; }
+    #mt_5 { flex-wrap: wrap; }
+  }
+  </style>
+</head>
+
+<body>
+  <div id="map" class="map"></div>
+  <div class="code">Designed by: <a href="https://www.linkedin.com/in/guillermolococo">Guillermo Lo Coco</a>
+                <br>Source Code: <a href="https://github.com/glococo/networkspeedtester">Github</a></div>
+  <div class="main">
+    <div id="mt_1">ES8/Node Net Speed Tester</div>
+    <div id="mt_2"></div>
+    <div id="mt_3"><div class="progress-bar" id="progress-bar">
+        <canvas id="pBase" height="280px" width="280px"></canvas>
+        <canvas id="pBlue" height="280px" width="280px"></canvas>
+        <div class="progress-data"> <span id="pdAccMB"></span><br><span id="pdSpeed"></span><br><span id="pdUnit"></span><br><span id="pdSpeMB"></span><br><br><span id="pdTest"></span> </div>
+      </div>
+    </div>
+    <div id="mt_4"><input type="button" id="st-start" onclick="startTest()" value=" S t a r t ">
+                   <input type="button" id="st-stop" onclick="stopTest()" value=" S t o p ">
+    </div>
+    <div id="mt_5"> <div id="rPing"></div><div id="rJitter"></div><div id="rDownload"></div><div id="rUpload"></div> </div>
+  </div>
+</body>
+
+
+<script type="text/javascript">
+  const $   =      _ => document.getElementById(_)
+  const log = (..._) => console.log(..._)
+  const testLapse    = 20
+
+  log( 'This PWA is just a Playground for testing new browser API.\n' +
+       'Make sure your browser support performance.now, navigator.serviceWorker, window.Worker, fetch and SharedArrayBuffer' )
+
+  var clientCC, clientIP, serverCC, serverIP, connType, interval, worker, sharedMemorySpace, stFw, OLview, OLmap, OLgeoLoc, OLfeature
+
+  class SpeedTestFramework {
+    constructor (sharedMemoryBuffer) {
+        this.testRun    = new Uint8Array(sharedMemoryBuffer,0,1),   // TestRun [0]Stop [1]Run [2]Finish [3]Cancel   [4]Ping/Jitter [5]Download [6]Upload
+        this.pingJitt   = new Uint8Array(sharedMemoryBuffer,1,1),   // Work percentage done of Ping-Jitter
+        this.download   = new Uint8Array(sharedMemoryBuffer,2,1),   // Work percentage done of Download
+        this.upload     = new Uint8Array(sharedMemoryBuffer,3,1),   // Work percentage done of Upload
+        this.vPing      = new Float32Array(sharedMemoryBuffer,4,1), // Ping value (float)
+        this.vJitter    = new Float32Array(sharedMemoryBuffer,8,1), // Jitter value (float)
+        this.vDownload  = new Float32Array(sharedMemoryBuffer,12,1), // Download value (float)
+        this.vDownloadCu= new Float32Array(sharedMemoryBuffer,16,1), // Download current value (float)
+        this.vDownloadMB= new Float32Array(sharedMemoryBuffer,20,1), // Downloaded MB value (float)
+        this.vUpload    = new Float32Array(sharedMemoryBuffer,24,1), // Upload value (float)
+        this.vUploadCu  = new Float32Array(sharedMemoryBuffer,28,1), // Upload current value (float)
+        this.vUploadMB  = new Float32Array(sharedMemoryBuffer,32,1) // Uploaded MB value (float)
+    }
+  }
+
+  if( SharedArrayBuffer ) {
+    sharedMemorySpace = new SharedArrayBuffer(36)
+    stFw = new SpeedTestFramework(sharedMemorySpace)
+  } else {
+    alert('Sorry, this playground is made with SharedMemoryBuffer API. Please, enable it in your browser.')
+  }
+
+  var pdAccMB= $('pdAccMB')
+  var pdSpeed= $('pdSpeed')
+  var pdSpeMB= $('pdSpeMB')
+  var pdTest = $('pdTest')
+  var currentTask= 0
+  var pTotal= 0
+
+  function pollSharedMemory() {
+    if ( stFw.testRun==4) {
+        if(currentTask!=4) { currentTask=4; pdTest.textContent="Ping + Jitter"; pdUnit.textContent="ms"; pdAccMB.textContent=""; }
+        pTotal= stFw.pingJitt / 5
+        canvasUpdate( stFw.pingJitt, pTotal )
+        pdSpeed.textContent= stFw.vPing[0].toFixed(2)
+        pdSpeMB.textContent= 'Jitter '+stFw.vJitter[0].toFixed(2)
+    } else if ( stFw.testRun==5 ) {
+        if(currentTask!=5) {
+          currentTask=5;
+          pdUnit.textContent = "Mbps"
+          pdSpeed.textContent= "wait.."
+          pdTest.textContent = "Downloading...";
+          $("rPing").innerHTML="Last Ping<br>"+stFw.vPing[0].toFixed(2)+" ms"
+          $("rPing").style.opacity=1
+          $("rJitter").innerHTML="Jitter<br>"+stFw.vJitter[0].toFixed(2)+" ms"
+          $("rJitter").style.opacity=1
+        }
+        pTotal= stFw.download /5 *2 +20
+        canvasUpdate( stFw.download, pTotal )
+        pdAccMB.textContent = stFw.vDownloadMB[0].toFixed(2) + ' MB'
+        pdSpeMB.textContent = stFw.vDownloadCu[0].toFixed(2) + ' MB/s'
+        if( stFw.vDownload!=0 ) pdSpeed.textContent= stFw.vDownload[0].toFixed(2)
+    } else if ( stFw.testRun==6 ) {
+        if(currentTask!=6) {
+          currentTask=6
+          pdSpeed.textContent="wait.."
+          pdTest.textContent ="Uploading..."
+          $("rDownload").innerHTML="Download "+stFw.vDownload[0].toFixed(2)+" Mbps<br>Received: "+stFw.vDownloadMB[0].toFixed(2)
+          $("rDownload").style.opacity=1
+        }
+        pTotal= stFw.upload /5 *2 +60
+        canvasUpdate( stFw.upload, pTotal )
+        pdAccMB.textContent = stFw.vUploadMB[0].toFixed(2) + ' MB'
+        pdSpeMB.textContent = stFw.vUploadCu[0].toFixed(2) + ' MB/s'
+        if( stFw.vUpload!=999 ) pdSpeed.textContent=stFw.vUpload[0].toFixed(2)
+    } else if ( stFw.testRun==2 ) {
+        if(currentTask!=2) {
+          currentTask=2;
+          $("rUpload").innerHTML="Upload "+stFw.vUpload[0].toFixed(2)+" Mbps<br>Sent: "+stFw.vUploadMB[0].toFixed(2)
+          $("rUpload").style.opacity=1
+          pdTest.textContent="¡ Finished !";
+        }
+        pTotal= stFw.upload /5 *2 +60
+        canvasUpdate( stFw.upload, pTotal )
+        pdAccMB.textContent = stFw.vUploadMB[0].toFixed(2) + ' MB'
+        pdSpeMB.textContent = stFw.vUploadCu[0].toFixed(2) + ' MB/s'
+        pdSpeed.textContent = stFw.vUpload[0].toFixed(2)
+    }
+    if ( stFw.testRun==2 || stFw.testRun==3 ) {
+        clearInterval( interval )
+        $('st-start').style.display= "unset"
+        $('st-stop').style.display= "none"
+        log("Done, status: "+ stFw.testRun )
+    }
+  }
+
+  function stopTest() { worker.postMessage({action:'Stop'}) }
+  function startTest() {
+    $('progress-bar').style.opacity=1;
+    $('st-start').style.display= "none"
+    $('st-stop').style.display= "unset"
+    worker.postMessage({ action:'Start', memory:sharedMemorySpace, url:window.location.href+'api/index.js' })
+    worker.onmessage = post => log( post.data )
+    interval = setInterval( pollSharedMemory, 250)
+  }
+
+async function init() {
+  if( !performance || !navigator.serviceWorker || !window.Worker || !fetch || !SharedArrayBuffer )
+    return alert('Sorry, your browser do not support one or more feature of this PWA Playground ')
+
+  navigator.serviceWorker.register('serviceworker.js').catch( _=> log('Error registering ServiceWorker') )
+  worker = new Worker('webworker.js')
+
+  canvasInit()
+  await getIPandCoordinates()
+  getConnectionType()
+  openLayerInit()
+}
+
+function openLayerInit() {
+  function OLArc(pointA, pointB) {
+    pointA= ol.proj.transform(pointA,"EPSG:3857","EPSG:4326")
+    pointB= ol.proj.transform(pointB,"EPSG:3857","EPSG:4326")
+    let start = { x: pointA[0], y: pointA[1] }
+    let end   = { x: pointB[0], y: pointB[1] }
+    let generator = new arc.GreatCircle(start, end, {'name': ''})
+    let line = generator.Arc( 100, {offset:10} )
+    let coordinates = line.geometries[0].coords
+    coordinates.forEach( (e,i,a) => a[i]=ol.proj.transform(e,"EPSG:4326","EPSG:3857") )
+    return new ol.geom.LineString(coordinates)
+  }
+  OLview    = new ol.View({ center: [0, 0], zoom: 4})
+  OLmap     = new ol.Map({
+    layers: [ new ol.layer.Tile({ source: new ol.source.OSM() }) ],
+    target: 'map', controls: ol.control.defaults({ attribution: false, zoom: false, rotate: false }),
+    view: OLview
+  })
+  OLmap.getInteractions().forEach( interaction => interaction.setActive(false) )
+  OLgeoLoc  = new ol.Geolocation({ projection: OLview.getProjection() })
+  OLfeature         = {}
+  OLfeature.anchor  = new ol.style.Style({ image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: '#3399CC' }), stroke: new ol.style.Stroke({ color: '#fff', width: 2 }) }) })
+  OLfeature.tline   = new ol.style.Style({ stroke: new ol.style.Stroke({color:"#0FF", width:8}) })
+  OLfeature.pServer = new ol.Feature()
+  OLfeature.pClient = new ol.Feature()
+  OLfeature.aClient = new ol.Feature()
+  OLfeature.CliServ = new ol.Feature()
+  OLfeature.pServer.setStyle( OLfeature.anchor )
+  OLfeature.pClient.setStyle( OLfeature.anchor )
+  OLfeature.CliServ.setStyle( OLfeature.tline )
+  OLfeature.pServer.setGeometry( new ol.geom.Point( ol.proj.transform( serverCC, "EPSG:4326", "EPSG:3857") ) )
+  ipSourceVector= new ol.source.Vector({ features: [OLfeature.aClient, OLfeature.pClient, OLfeature.pServer, OLfeature.CliServ] })
+  new ol.layer.Vector({ map: OLmap, source: ipSourceVector });
+  OLgeoLoc.on('change:position', _=>{
+    let cc= OLgeoLoc.getPosition()
+    if (cc) {
+      OLfeature.pClient.setGeometry( new ol.geom.Point(cc) )
+      OLfeature.CliServ.setGeometry( OLArc( OLfeature.pServer.getGeometry().getCoordinates(), OLfeature.pClient.getGeometry().getCoordinates() ) )
+      OLview.fit( OLfeature.CliServ.getGeometry(), {padding: [50,50,50,50], duration: 2000} )
+    }
+  })
+  OLgeoLoc.on('change:accuracyGeometry', _=> OLfeature.aClient.setGeometry( OLgeoLoc.getAccuracyGeometry() ) )
+
+  window.addEventListener('resize', _=> OLview.fit( OLfeature.CliServ.getGeometry(), {padding: [50,50,50,50], duration: 500} ) )
+  setTimeout( _=> OLgeoLoc.setProperties({ accuracy:140, position: ol.proj.transform( clientCC, "EPSG:4326", "EPSG:3857") }), 500 )
+  setTimeout( _=> OLgeoLoc.setTracking(1), 2000 )
+}
+
+function getConnectionType(){
+  let connection  = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  connType        = connection.type || connection.effectiveType
+
+  $('mt_2').innerHTML=`Your IP: ${clientIP}`
+  if ( connType ) $('mt_2').innerHTML=`Connected through ${connType} - IP: ${clientIP}`
+}
+
+async function getIPandCoordinates() {
+  let request = await fetch(`https://dns.google.com/resolve?name=${location.host}&type=A`)
+  request     = await request.json()
+  if( !request.Answer[0].data ) return
+  serverIP    = request.Answer[0].data
+  request     = await fetch(`https://get.geojs.io/v1/ip/geo/${serverIP}.json`).catch( _=>log(`Err getting server coordinates. Make sure you don't have any AdBlocker enabled`) )
+  request     = await request.json()
+  if( !request.latitude || !request.longitude ) return
+  serverCC    = [ +request.longitude, +request.latitude ]
+
+  request     = await fetch('https://get.geojs.io/v1/ip/geo.json').catch( _=>log(`Err getting your public IP and coordinates. Make sure you don't have any AdBlocker enabled`) )
+  request     = await request.json()
+  if( !request.latitude || !request.longitude || !request.ip ) return
+  clientIP    = request.ip
+  clientCC    = [ +request.longitude, +request.latitude ]
+}
+
+function canvasInit(){  // Speedometer knob
+  e= $('pBase').getContext('2d')
+  e.lineCap= 'butt'
+  e.beginPath()
+  e.lineWidth= 15
+  e.strokeStyle= '#DDD'
+  e.arc(140,140,129,0,2*Math.PI)
+  e.stroke()
+  e.beginPath()
+  e.lineWidth= 19
+  e.strokeStyle= '#AAA'
+  e.arc(140,140,110,0,2*Math.PI)
+  e.stroke()
+  e.beginPath()
+  e.strokeStyle= '#EEE'
+  e.arc(140,140,110,.25*Math.PI,.75*Math.PI)
+  e.stroke()
+  e.beginPath()
+  e.lineWidth= 0
+  e.fillStyle= '#FFF'
+  e.arc(140,140,100,0,2*Math.PI)
+  e.fill()
+}
+
+function canvasUpdate(percent,total){
+  percent=percent/100
+  total=total/100
+  let blue= $('pBlue').getContext("2d")
+  let pArcEnd= (2*percent*Math.PI*.75 + Math.PI*.75)
+  let tArcEnd= (2*total*Math.PI*.75 + Math.PI*.75)
+  let arcStart= Math.PI*.75
+
+  blue.clearRect(0, 0, 280, 280)
+
+  blue.lineCap= 'butt'
+  blue.beginPath()
+  blue.setLineDash([])
+  blue.lineWidth= 19
+  blue.strokeStyle= '#0BF'
+  blue.arc(140,140,110, arcStart, tArcEnd)
+  blue.stroke()
+
+  blue.lineCap= 'butt'
+  blue.beginPath()
+  blue.setLineDash([20, 5])
+  blue.lineWidth= 10
+  blue.strokeStyle= '#0BF'
+  blue.arc(140,140,90, arcStart, pArcEnd)
+  blue.stroke()
+}
+
+init()
+
+</script>
+
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "ES8 Network Speed Tester",
+  "short_name": "SpeedTester",
+  "description": "A simple PWA Speed Tester",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#4285f4",
+  "theme_color": "#4285f4",
+  "start_url":".",
+  "icons": [ {"src":"nst_192.png","type":"image/png","sizes":"192x192"},{ "src":"nst_logo_min.svg", "sizes":"512x512" } ]
+}

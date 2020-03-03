@@ -146,8 +146,8 @@ function upload() {   // using XHR instead of Fetch API because "Progress" in 20
       bytesSent+= progress.total
       bytesCurr = 0
       if( fw.testRun==3 ) return xhr.abort()
-      let elapsed = performance.now() - start
-      if( elapsed > fw.pingsAndSeconds*1000 ) { fw.testRun[0]=2; return console.log('FINISH') }
+      if( fw.testRun==2 ) return
+      if( fw.upload>=100 ) { fw.upload[0]=100; fw.testRun[0]=2; return console.log('FINISH.') }
       return send()
     }
     function onProgress(progress) {
@@ -163,7 +163,7 @@ function upload() {   // using XHR instead of Fetch API because "Progress" in 20
         msDiscarded    = elapsed
       }
       if( fw.testRun==3 ) return xhr.abort()
-      if( elapsed > fw.pingsAndSeconds*1000 ) { xhr.abort(); fw.testRun[0]=2; return console.log('FINISH') }
+      if( fw.upload>=100 ) { xhr.abort(); fw.upload[0]=100; fw.testRun[0]=2; return console.log('FINISH') }
     }
   }
 

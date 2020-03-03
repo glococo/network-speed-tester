@@ -114,66 +114,57 @@ function upload() {   // using XHR instead of Fetch API because "Progress" in 20
   fw.vUpload[0]     = 0
   fw.vUploadCu[0]   = 0
   fw.vUploadMB[0]   = 0
-  let xhr, start
+  let start
   let bytesSent = 0
   let bytesCurr = 0
   let msDiscarded = 0
   let bytesDiscarded = 0
 
-  let size    = 1250   // 8*1250*1000 = 10MB  (Float64Array==8bytes, 1250 random float64 numbers, 1000 loops)
+  let size    = 430   // 8*1250*1000 = 3,4MB AWSZeitLimit  (Float64Array==8bytes, 430 random float64 numbers, 1000 loops)
   let bigbig  = new Float64Array(size*1000)
   for( let i=0; i<size; ++i) bigbig[i]=Math.random()  // 1250*8 bytes of random garbage
   for( let i=0; i<1000; ++i) bigbig.copyWithin( size*i , 0, size)
-  let gBlob = new Blob( bigbig )   // 10 MB upload file
-  let fData = new FormData()
-  fData.append("gfile", gBlob)
 
-  start = performance.now()
-  xhr   = new XMLHttpRequest()
-  xhr.upload.onprogress = onProgress
-  xhr.upload.onload     = onProgressEnd
-  xhr.upload.onerror    = onErr
-  xhr.open( 'POST', fw.urlUpload(), true )
-  xhr.setRequestHeader('Content-Type','application/octet-stream')
-  xhr.setRequestHeader('Content-Disposition','attachment; filename=random.dat')
-  xhr.setRequestHeader('Content-Transfer-Encoding','binary')
-  xhr.send( fData )
+  start= performance.now()
+  send()
 
-  function onErr (err) {
-    console.log('Error', err)
-    try { xhr.abort() } catch (e) { }
-    if( fw.testRun==3 || fw.testRun==2 ) return
+  function send() {
+    let xhr = new XMLHttpRequest()
+    xhr.upload.onprogress = onProgress
+    xhr.upload.onload     = onProgressEnd
+    xhr.upload.onerror    = onErr
     xhr.open( 'POST', fw.urlUpload(), true )
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded")
-    xhr.send( fData )
-  }
+    xhr.send( bigbig )
 
-  function onProgressEnd(progress){
-    console.log('Complete', progress)
-    onProgress(progress)
-    bytesSent+= bytesCurr
-    bytesCurr = 0
-    xhr.open( 'POST', fw.urlUpload(), true )
-    xhr.setRequestHeader('Content-Type','application/octet-stream')
-    xhr.setRequestHeader('Content-Disposition','attachment; filename=random.dat')
-    xhr.setRequestHeader('Content-Transfer-Encoding','binary')
-    xhr.send( fData )
-  }
-
-  function onProgress(progress) {
-    let elapsed     = performance.now() - start
-    bytesCurr       = progress.loaded
-    fw.upload[0]    = elapsed /10 /fw.pingsAndSeconds
-    fw.vUploadMB[0] = ( bytesSent+bytesCurr ) /1024 /1024
-    if( elapsed >= pCache ) {
-      fw.vUpload[0]  = ( (bytesSent+bytesCurr-bytesDiscarded)/131072 ) / ( (elapsed-msDiscarded)/1000 )
-      fw.vUploadCu[0]= fw.vUpload /8
-    } else {
-      bytesDiscarded = bytesCurr
-      msDiscarded    = elapsed
+    function onErr (err) {
+      console.log('UploadError', err)
+      if( fw.testRun==3 || fw.testRun==2 ) return
+      return send()
     }
-    if( fw.testRun==3 ) return xhr.abort()
-    if( elapsed > fw.pingsAndSeconds*1000 ) { console.log('FINISH'); xhr.abort(); return fw.testRun[0]=2 }
+    function onProgressEnd(progress){
+      onProgress(progress)
+      bytesSent+= progress.total
+      bytesCurr = 0
+      if( fw.testRun==3 ) return xhr.abort()
+      let elapsed = performance.now() - start
+      if( elapsed > fw.pingsAndSeconds*1000 ) { fw.testRun[0]=2; return console.log('FINISH') }
+      return send()
+    }
+    function onProgress(progress) {
+      let elapsed     = performance.now() - start
+      bytesCurr       = progress.loaded
+      fw.upload[0]    = elapsed /10 /fw.pingsAndSeconds
+      fw.vUploadMB[0] = ( bytesSent+bytesCurr ) /1024 /1024
+      if( elapsed >= pCache ) {
+        fw.vUpload[0]  = ( (bytesSent+bytesCurr-bytesDiscarded)/131072 ) / ( (elapsed-msDiscarded)/1000 )
+        fw.vUploadCu[0]= fw.vUpload /8
+      } else {
+        bytesDiscarded = bytesCurr
+        msDiscarded    = elapsed
+      }
+      if( fw.testRun==3 ) return xhr.abort()
+      if( elapsed > fw.pingsAndSeconds*1000 ) { xhr.abort(); fw.testRun[0]=2; return console.log('FINISH') }
+    }
   }
 
 }

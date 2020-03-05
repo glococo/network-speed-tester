@@ -33,8 +33,8 @@ Some of them, re-enabled it.
 
 - Android: Chrome +64 with "chrome://flags" -> "WebAssembly threads support" flag enabled
 - Android: Firefox +57 with "about:config" -> "javascript.options.shared_memory" and "javascript.options.experimental.fields" flag enabled
-- Android: Opera not supported
-- Android: Edge not supported
+- Android: Opera 57 not supported
+- Android: Edge 45 not supported
 
 ## Features
 * Customizable test duration

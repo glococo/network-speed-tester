@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <html>
+  <html lang="en">
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
@@ -93,13 +93,6 @@
     }
   }
 
-  if( SharedArrayBuffer ) {
-    sharedMemorySpace = new SharedArrayBuffer(36)
-    stFw = new SpeedTestFramework(sharedMemorySpace)
-  } else {
-    alert('Sorry, this playground is made with SharedMemoryBuffer API.\nPlease, check this playground requirements.')
-  }
-
   var pdAccMB= $('pdAccMB')
   var pdSpeed= $('pdSpeed')
   var pdSpeMB= $('pdSpeMB')
@@ -175,9 +168,11 @@
   }
 
 async function init() {
-  if( !performance || !navigator.serviceWorker || !window.Worker || !fetch || !SharedArrayBuffer )
-    return alert('Sorry, your browser do not support one or more feature of this PWA Playground ')
+  if( !performance.now || !navigator.serviceWorker || !window.Worker || typeof fetch=='undefined' || typeof SharedArrayBuffer=='undefined' )
+    return alert('Sorry, your browser do not support one or more feature of this PWA Playground.\nPlease, check in github this playground requirements.')
 
+  sharedMemorySpace = new SharedArrayBuffer(36)
+  stFw = new SpeedTestFramework(sharedMemorySpace)
   navigator.serviceWorker.register('serviceworker.js').catch( _=> log('Error registering ServiceWorker') )
   worker = new Worker('webworker.js')
 
